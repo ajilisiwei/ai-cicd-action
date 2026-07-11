@@ -143,17 +143,19 @@ actions:                               # 按项目开关
 
 ---
 
-## 5. Bootstrapper Skill
+## 5. Bootstrapper Skill ✅（已交付：`skill/`）
 
-`/init-ai-cicd` 触发后：
+`skill/init_ai_cicd.py` 是确定性生成器,`skill/SKILL.md` 是 agent 包装。运行后：
 
-1. **探测项目**：语言、包管理器、test/build 命令、源码布局（读 package.json / go.mod / pyproject.toml）→ 生成 `ai-cicd.yml` 草稿待确认。
-2. **落盘 workflows**：渲染薄触发器（默认 `uses: ajilisiwei/ai-cicd-action@v1`；`--mode=vendor` 则拷贝 engine）。
-3. **前置条件清单**（不自动改敏感配置，仅输出待办）：所需 secrets（`DEEPSEEK_API_KEY`、`GH_PAT`，agent 基座另需 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN`）、Variables（`LLM_PROVIDER/MODEL`）、`main` 为默认分支约束、PAT scope。
-4. **自检**：`actionlint` 校验 YAML + `workflow_dispatch` 干跑一次 `review` 验证接线。
-5. **幂等**：可重复运行，已存在文件走 diff 更新。
+1. **探测项目**：读 package.json / go.mod / pyproject.toml → 判定 language + test/build/syntax 命令 + 源码布局 → 生成 `ai-cicd.yml` 草稿。
+2. **落盘 workflows**：渲染薄触发器（默认 `uses: ajilisiwei/ai-cicd-action@v1`；`--mode=vendor` 拷贝 engine 到 `.github/ai-cicd-engine/`）。
+3. **前置条件清单**：所需 secrets（`DEEPSEEK_API_KEY`、`GH_PAT`）、Variables、默认分支约束、public→private 跨仓限制。
+4. **幂等**：已存在文件默认不覆盖（`--force` 才覆盖）；`--dry-run` 预览。
+5. **测试**：`skill/test_init.py` 12 例——探测（node/py/go/generic）、生成配置经 **engine 自身 loader** 交叉校验、所有 workflow YAML 合法、幂等、vendor 拷贝。
 
-内置 `references/pitfalls.md`（见附录）——两天踩坑换来的资产，新项目直接绕坑。
+**语言支持**：node 全支持；python/go 有正确 config + runtime setup（深度门禁回退 generic）；`security_triage` 暂 node-only（npm-audit 形状），其它语言自动关闭。
+
+内置 `references/pitfalls.md`（见附录）——踩坑资产,新项目直接绕坑。
 
 ---
 

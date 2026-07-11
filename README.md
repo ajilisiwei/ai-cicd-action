@@ -23,10 +23,10 @@ the coding-agent backend analysis, security model, and the phased roadmap (P0–
 
 | Phase | Deliverable |
 |---|---|
-| P0 | De-`t-cli` the engine → read `ai-cicd.yml`; regress on t-cli |
-| P1 | Engine + language profiles (`node`/`generic`) |
-| P2 | Composite `action.yml` + `@v1` tag |
-| P3 | Bootstrapper Skill (`/init-ai-cicd`) |
+| P0 | De-`t-cli` the engine → read `ai-cicd.yml`; regress on t-cli ✅ |
+| P1 | Engine + language profiles (`node`/`generic`) ✅ |
+| P2 | Composite `action.yml` + `@v1` tag ✅ |
+| P3 | Bootstrapper Skill (`skill/`, `init_ai_cicd.py`) ✅ |
 | P4 | node profile port + generic fallback (6 actions cross-language) |
 | P5 | Coding-agent backends (Claude Code → OpenCode → Codex) |
 | P6 | Security hardening (injection isolation, sandbox, budget caps) |
