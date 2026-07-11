@@ -66,7 +66,8 @@ def auto_fix_action(cfg, profile):
 
     test_hint = f"Tests use `{cfg.test_cmd}`. " if cfg.test_cmd else ""
     fix = call_llm(
-        system=(
+        system=cfg.system_body(
+            "auto_fix",
             f"You are a senior engineer fixing a CI test failure for {cfg.project_line()}. "
             f"{test_hint}\n\n"
             "Rules:\n"
@@ -75,8 +76,7 @@ def auto_fix_action(cfg, profile):
             "3. Be minimal — change only what's needed to pass the test\n"
             "4. If the issue is a missing null check / edge case, add the guard\n"
             "5. If you cannot determine the fix, output 'UNSURE: <reason>'"
-            + INJECTION_GUARD
-        ),
+        ) + INJECTION_GUARD,
         user=(
             f"CI Test Failure (run #{run_id}):\n\n"
             f"PR Diff (what changed):\n{fenced('diff', diff[:5000])}\n\n"
@@ -247,6 +247,12 @@ def implement_issue_action(cfg, profile):
            if cfg.conventions else "")
     )
 
+    # Project-supplied extra codegen guidance, appended to the plan/codegen/diff
+    # prompts (implement_issue is multi-prompt, so it uses prompt_extra, not a
+    # full system override). INJECTION_GUARD still comes last on every prompt.
+    _extra = cfg.prompt_extra("implement_issue")
+    extra_block = f"\n\n{_extra}" if _extra else ""
+
     # ── 3. Plan ──
     plan = call_llm(
         system=(
@@ -264,6 +270,7 @@ def implement_issue_action(cfg, profile):
             f"- New files follow the project's existing layout under {cfg.source_dir}/.\n"
             "- Reuse existing exports from the API reference; never invent module names or paths.\n"
             "- Follow existing patterns and the project conventions."
+            + extra_block
             + INJECTION_GUARD
         ),
         user=(
@@ -321,6 +328,7 @@ def implement_issue_action(cfg, profile):
         "- OBEY the project conventions/architecture in the context — especially the UI/IO "
         "control model. Do not violate the framework's ownership of stdin/stdout or its lifecycle.\n"
         "- Match the project's existing language, module system, and style; handle null/edge cases."
+        + extra_block
         + INJECTION_GUARD
     )
 
@@ -365,6 +373,7 @@ def implement_issue_action(cfg, profile):
                 "- Do NOT rewrite the whole file and do NOT emit placeholder comments.\n"
                 "- Import only real exports from the API reference (exact name and path).\n"
                 "- OBEY the project conventions/architecture in the context (UI/IO control model)."
+                + extra_block
                 + INJECTION_GUARD
             ),
             user=(

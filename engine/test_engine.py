@@ -52,6 +52,45 @@ class ConfigTests(unittest.TestCase):
             self.assertIn("demo — a demo", cfg.project_line())
 
 
+class PromptCustomizationTests(unittest.TestCase):
+    def test_no_config_returns_default_unchanged(self):
+        cfg = ProjectConfig()
+        self.assertEqual(cfg.system_body("review", "DEFAULT"), "DEFAULT")
+        self.assertEqual(cfg.prompt_extra("implement_issue"), "")
+
+    def test_extra_is_appended(self):
+        cfg = ProjectConfig(prompts={"review": {"extra": "ALSO CHECK X"}})
+        body = cfg.system_body("review", "DEFAULT")
+        self.assertTrue(body.startswith("DEFAULT"))
+        self.assertIn("ALSO CHECK X", body)
+
+    def test_system_overrides_body(self):
+        cfg = ProjectConfig(prompts={"review": {"system": "CUSTOM"}})
+        self.assertEqual(cfg.system_body("review", "DEFAULT"), "CUSTOM")
+
+    def test_system_and_extra_compose(self):
+        cfg = ProjectConfig(prompts={"review": {"system": "CUSTOM", "extra": "PLUS"}})
+        self.assertEqual(cfg.system_body("review", "DEFAULT"), "CUSTOM\n\nPLUS")
+
+    def test_prompt_extra_for_multi_prompt_action(self):
+        cfg = ProjectConfig(prompts={"implement_issue": {"extra": "PREFER UTILS"}})
+        self.assertEqual(cfg.prompt_extra("implement_issue"), "PREFER UTILS")
+
+    def test_malformed_prompt_entry_ignored_on_load(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "ai-cicd.yml")
+            with open(p, "w") as f:
+                f.write(textwrap.dedent("""
+                    prompts:
+                      review: "not a dict"
+                      auto_fix:
+                        extra: "ok"
+                """))
+            cfg = load_config(p)
+            self.assertNotIn("review", cfg.prompts)     # scalar dropped
+            self.assertEqual(cfg.prompt_extra("auto_fix"), "ok")
+
+
 class ProfileSelectionTests(unittest.TestCase):
     def test_node_language_selects_node_profile(self):
         self.assertIsInstance(get_profile(ProjectConfig(language="node")), NodeProfile)

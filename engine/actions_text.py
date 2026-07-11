@@ -23,7 +23,8 @@ def review_action(cfg, profile):
 
     ctx = get_pr_context()
     review = call_llm(
-        system=(
+        system=cfg.system_body(
+            "review",
             f"You are a senior engineer doing code review for {cfg.project_line()}. "
             "Be critical and specific. For each issue, state: "
             "FILE:LINE | SEVERITY (critical/major/minor) | DESCRIPTION | SUGGESTION\n\n"
@@ -34,8 +35,7 @@ def review_action(cfg, profile):
             "4. Code style consistency with the codebase\n"
             "5. Performance issues\n\n"
             "If no issues, say 'No issues found.'"
-            + INJECTION_GUARD
-        ),
+        ) + INJECTION_GUARD,
         user=f"PR #{ctx['pr_num']} in {ctx['repo']}\n\n" + fenced("diff", diff),
     )
     write_output("review_body", review)
@@ -52,7 +52,8 @@ def test_suggestion_action(cfg, profile):
 
     test_hint = f"Tests are run via `{cfg.test_cmd}`." if cfg.test_cmd else ""
     suggestion = call_llm(
-        system=(
+        system=cfg.system_body(
+            "test_suggestion",
             f"You are a testing expert reviewing a PR for {cfg.project_line()}. {test_hint}\n\n"
             "For each new or modified function/class, suggest a unit test:\n"
             "1. What to test (function name + purpose)\n"
@@ -60,8 +61,7 @@ def test_suggestion_action(cfg, profile):
             "3. A concise example test snippet in the project's existing test style\n\n"
             "Focus on the CHANGED code only. If no test-worthy changes exist, "
             "say 'No test-worthy changes detected.'"
-            + INJECTION_GUARD
-        ),
+        ) + INJECTION_GUARD,
         user="PR diff:\n" + fenced("diff", diff[:8000]),
     )
     write_output("suggestion", suggestion)
@@ -97,7 +97,8 @@ def changelog_action(cfg, profile):
         return
 
     notes = call_llm(
-        system=(
+        system=cfg.system_body(
+            "changelog",
             f"Generate release notes from git log for {cfg.project_line()}. Group commits by:\n"
             "## Features — new capabilities\n"
             "## Bug Fixes — bug fixes and error handling\n"
@@ -106,8 +107,7 @@ def changelog_action(cfg, profile):
             "For each group, list commits as bullet points with the commit hash in "
             "parentheses. If a group has no commits, omit it entirely.\n"
             "Output ONLY the release notes in valid markdown."
-            + INJECTION_GUARD
-        ),
+        ) + INJECTION_GUARD,
         user=f"Previous tag: {prev_tag or '(first release)'}\n\nCommits:\n" + fenced("log", log),
     )
     # Write to a file so the composite action can surface it without redirecting
@@ -122,8 +122,10 @@ def summary_action(cfg, profile):
     """Summarize an issue body."""
     body = os.getenv("ISSUE_BODY", "")
     summary = call_llm(
-        system="Summarize this issue: what is the problem, where does it occur, any proposed solution."
-        + INJECTION_GUARD,
+        system=cfg.system_body(
+            "summary",
+            "Summarize this issue: what is the problem, where does it occur, any proposed solution.",
+        ) + INJECTION_GUARD,
         user=fenced("issue", body),
     )
     print(summary)
@@ -172,15 +174,15 @@ def security_triage_action(cfg, profile):
                                      buckets["moderate"], buckets["low"])
 
     report_text = call_llm(
-        system=(
+        system=cfg.system_body(
+            "security_triage",
             f"You are a security engineer analyzing dependency audit results for "
             f"{cfg.project_line()}. Summarize the vulnerabilities concisely:\n"
             "1. How many critical/high/moderate/low\n"
             "2. For each critical/high vulnerability: what is the risk, is a fix available\n"
             "3. Recommendation: automated fix vs manual upgrade\n\n"
             "If there are NO critical or high vulnerabilities, say 'No critical or high issues.'"
-            + INJECTION_GUARD
-        ),
+        ) + INJECTION_GUARD,
         user=(
             f"Audit summary:\n"
             f"Total vulnerabilities: {audit['metadata']['vulnerabilities']['total']}\n"
@@ -271,7 +273,8 @@ def issue_triage_action(cfg, profile):
             continue
 
         analysis = call_llm(
-            system=(
+            system=cfg.system_body(
+                "issue_triage",
                 f"Classify this GitHub issue for {cfg.project_line()}. "
                 "Return ONLY a JSON object with:\n"
                 "{\n"
@@ -280,8 +283,7 @@ def issue_triage_action(cfg, profile):
                 '  "summary": "one-line summary (max 80 chars)"\n'
                 "}\n"
                 "Base the type and priority on the issue content."
-                + INJECTION_GUARD
-            ),
+            ) + INJECTION_GUARD,
             user=fenced(
                 "issue",
                 f"#{issue['number']}: {issue['title']}\n\n{(issue['body'] or '(no description)')[:2000]}",

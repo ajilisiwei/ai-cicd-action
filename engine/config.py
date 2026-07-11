@@ -54,6 +54,10 @@ class ProjectConfig:
     # — action switches —
     actions: dict = field(default_factory=dict)
 
+    # — per-action prompt customization —
+    # {action_key: {"extra": "...appended...", "system": "...full override..."}}
+    prompts: dict = field(default_factory=dict)
+
     def project_line(self) -> str:
         """One-line project descriptor injected into every system prompt."""
         if self.description:
@@ -63,6 +67,27 @@ class ProjectConfig:
     def action_enabled(self, action: str) -> bool:
         # Default to enabled: absence of an explicit switch means "on".
         return bool(self.actions.get(action, True))
+
+    def system_body(self, action_key: str, default_body: str) -> str:
+        """Resolve a system-prompt body for `action_key`, applying project overrides.
+
+        - prompts.<key>.system  → replaces the default body entirely
+        - prompts.<key>.extra   → appended to the (possibly overridden) body
+        The security INJECTION_GUARD is NOT part of this — callers append it after,
+        so a project override can never drop the injection defense. Absent config
+        returns default_body unchanged (fully backward compatible)."""
+        p = self.prompts.get(action_key) or {}
+        body = p.get("system") or default_body
+        extra = p.get("extra")
+        return f"{body}\n\n{extra}" if extra else body
+
+    def prompt_extra(self, action_key: str) -> str:
+        """Project-supplied extra instructions for `action_key` ('' if none).
+
+        For multi-prompt actions (e.g. implement_issue) that append the same extra
+        to several internal prompts."""
+        p = self.prompts.get(action_key) or {}
+        return p.get("extra") or ""
 
 
 def _read_conventions(conv_file, limit=6000) -> str:
@@ -102,6 +127,10 @@ def load_config(path: str = None) -> ProjectConfig:
     providers = raw.get("providers", {}) or {}
     engine = raw.get("engine", {}) or {}
     actions = raw.get("actions", {}) or {}
+    # Keep only well-formed {key: {extra?, system?}} entries.
+    prompts = {
+        k: v for k, v in (raw.get("prompts", {}) or {}).items() if isinstance(v, dict)
+    }
 
     exts = layout.get("file_ext") or layout.get("file_exts")
     file_exts = tuple(exts) if exts else ProjectConfig.file_exts
@@ -126,4 +155,5 @@ def load_config(path: str = None) -> ProjectConfig:
         max_turns=int(engine.get("max_turns") or 30),
         escalate_on_api_failure=bool(engine.get("escalate_on_api_failure", True)),
         actions=dict(actions),
+        prompts=prompts,
     )

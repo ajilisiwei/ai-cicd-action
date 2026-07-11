@@ -38,3 +38,16 @@ actions:                           # feature switches (absent = enabled)
   auto_fix: true
   implement_issue: true
   changelog: true
+
+# Optional per-action prompt customization. Keyed by AI_ACTION name
+# (review | test_suggestion | changelog | summary | security_triage |
+#  issue_triage | auto_fix | implement_issue). The security injection guard is
+# always appended after your text, so an override can never disable it.
+#   extra:  appended to the default system prompt (recommended)
+#   system: replaces the default body entirely (single-prompt actions only;
+#           implement_issue is multi-prompt and honors `extra` only)
+# prompts:
+#   review:
+#     extra: "Additionally flag DeepSeek API misuse and Ink render anti-patterns."
+#   implement_issue:
+#     extra: "Prefer adding a new src/utils/ module over modifying src/repl.js."

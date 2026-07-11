@@ -109,6 +109,22 @@ actions:                               # 按项目开关
 
 `call_llm` 的 system prompt 全部模板化：`f"You are working on {name}, {description}. Tests run via {test_cmd}..."`。
 
+### 3.1 分层定制模型（消费项目直接引用 action 时如何定制）✅
+
+「直接 `uses: @v1`」不锁死项目个性。定制分层落在**消费项目自己的文件**里,90% 不碰中央仓库：
+
+| 定制类型 | 落点（在消费项目内） | 说明 |
+|---|---|---|
+| 项目身份 / 命令 / 布局 / 功能开关 | `.github/ai-cicd.yml` | name/description/commands/layout/`actions:` |
+| 架构约束 / 框架规则（注入 codegen） | `conventions_file`（CLAUDE.md） | 例：「Ink owns stdin」 |
+| 触发 / 权限 / 编排 / 前后步骤 | `.github/workflows/*.yml` | action 只是一个 step,周围全是项目策略 |
+| **单个 action 的 prompt 措辞** | `ai-cicd.yml` 的 `prompts:` 块 | `extra`（追加）/ `system`（整替）|
+| 模型 / 密钥 | GitHub Variables / Secrets | provider/model、API key |
+| 引擎版本稳定性 | `uses:` 的 ref | `@v1` / `@vX.Y.Z` / `@<sha>` |
+| 项目专属全新 AI 逻辑 | 自定义 step / `--mode=vendor` / fork+`uses: ./local` | 逃生舱 |
+
+**`prompts:` 扩展点（已交付）**：按 AI_ACTION 名 keying,`extra` 追加到默认 system prompt、`system` 整段替换（`implement_issue` 多 prompt,仅支持 `extra`,套到 plan/codegen/diff 三处）。**`INJECTION_GUARD` 恒定最后追加,项目覆盖无法关闭注入防御**（已测试验证）。向后兼容:无 `prompts:` 配置则默认 prompt 原样不变。
+
 ---
 
 ## 4. 语言适配层（language profiles）
