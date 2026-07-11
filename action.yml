@@ -1,0 +1,114 @@
+name: "AI CI/CD Engine"
+description: "Model-agnostic AI CI/CD engine — PR review, auto-fix, release notes, issue triage, security scan, test suggestions, and issue implementation."
+
+inputs:
+  action:
+    description: "Engine action: review | test_suggestion | changelog | security_triage | issue_triage | auto_fix | implement_issue | summary"
+    required: true
+  config-path:
+    description: "Path to ai-cicd.yml, relative to the repo root."
+    required: false
+    default: ".github/ai-cicd.yml"
+  python-version:
+    description: "Python version for the engine."
+    required: false
+    default: "3.11"
+  llm-provider:
+    description: "LLM provider (openai | anthropic | deepseek | openrouter | ollama | custom)."
+    required: false
+    default: "deepseek"
+  llm-model:
+    description: "Model id for the provider."
+    required: false
+    default: "deepseek-chat"
+  llm-api-key:
+    description: "API key for the selected provider. Exposed to the engine as LLM_API_KEY."
+    required: false
+    default: ""
+  github-token:
+    description: "Token for gh operations (issue/PR/log reads, pushes). Use GH_PAT for closed-loop actions."
+    required: false
+    default: ""
+  failed-run-id:
+    description: "auto_fix: the failed CI run id whose logs to read."
+    required: false
+    default: ""
+  fix-branch:
+    description: "auto_fix: branch to push the fix to."
+    required: false
+    default: ""
+  issue-number:
+    description: "implement_issue: the issue number to implement."
+    required: false
+    default: ""
+  issue-body:
+    description: "summary: raw issue body to summarize."
+    required: false
+    default: ""
+  prev-tag:
+    description: "changelog: previous tag (auto-detected if empty)."
+    required: false
+    default: ""
+  audit-file:
+    description: "security_triage: path to the audit JSON."
+    required: false
+    default: "audit.json"
+
+outputs:
+  review_body:
+    description: "review: the review markdown."
+    value: ${{ steps.run.outputs.review_body }}
+  suggestion:
+    description: "test_suggestion: the suggestion text."
+    value: ${{ steps.run.outputs.suggestion }}
+  summary:
+    description: "security_triage: the analysis summary."
+    value: ${{ steps.run.outputs.summary }}
+  has_critical:
+    description: "security_triage: 'true' if critical vulnerabilities were found."
+    value: ${{ steps.run.outputs.has_critical }}
+  report:
+    description: "issue_triage: triage report."
+    value: ${{ steps.run.outputs.report }}
+  branch:
+    description: "implement_issue: the branch the implementation was committed to."
+    value: ${{ steps.run.outputs.branch }}
+  pr_title:
+    description: "implement_issue: suggested PR title."
+    value: ${{ steps.run.outputs.pr_title }}
+  pr_body_path:
+    description: "implement_issue: path to the generated PR body."
+    value: ${{ steps.run.outputs.pr_body_path }}
+  verified:
+    description: "implement_issue: 'true' if the generated code passed all gates."
+    value: ${{ steps.run.outputs.verified }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install engine dependencies
+      shell: bash
+      run: pip install --quiet openai pyyaml
+
+    - name: Run AI engine
+      id: run
+      shell: bash
+      env:
+        AI_ACTION: ${{ inputs.action }}
+        AI_CICD_CONFIG: ${{ inputs.config-path }}
+        LLM_PROVIDER: ${{ inputs.llm-provider }}
+        LLM_MODEL: ${{ inputs.llm-model }}
+        LLM_API_KEY: ${{ inputs.llm-api-key }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        FAILED_RUN_ID: ${{ inputs.failed-run-id }}
+        FIX_BRANCH: ${{ inputs.fix-branch }}
+        ISSUE_NUMBER: ${{ inputs.issue-number }}
+        ISSUE_BODY: ${{ inputs.issue-body }}
+        PREV_TAG: ${{ inputs.prev-tag }}
+        AUDIT_FILE: ${{ inputs.audit-file }}
+      run: python "$GITHUB_ACTION_PATH/engine/ai_agent.py"

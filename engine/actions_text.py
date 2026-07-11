@@ -110,6 +110,11 @@ def changelog_action(cfg, profile):
         ),
         user=f"Previous tag: {prev_tag or '(first release)'}\n\nCommits:\n" + fenced("log", log),
     )
+    # Write to a file so the composite action can surface it without redirecting
+    # its own stdout; still echo for the run log.
+    out_file = os.getenv("RELEASE_NOTES_FILE", "RELEASE_NOTES.md")
+    with open(out_file, "w", encoding="utf-8") as f:
+        f.write(notes)
     print(notes)
 
 

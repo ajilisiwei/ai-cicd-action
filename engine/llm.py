@@ -42,9 +42,11 @@ def init_client(cfg=None):
         _model = os.getenv("LLM_MODEL") or "qwen2.5-coder:14b"
     else:
         endpoint = ENDPOINTS.get(provider) or ENDPOINTS["custom"]
-        api_key = os.getenv(endpoint["key_env"])
+        # Provider-specific key first (DEEPSEEK_API_KEY, ...); fall back to the
+        # generic LLM_API_KEY so the reusable action can pass one key input.
+        api_key = os.getenv(endpoint["key_env"]) or os.getenv("LLM_API_KEY")
         if not api_key:
-            print(f"::error::Missing API key env var: {endpoint['key_env']} for provider={provider}")
+            print(f"::error::Missing API key: set {endpoint['key_env']} or LLM_API_KEY for provider={provider}")
             sys.exit(1)
         _client = OpenAI(base_url=endpoint["base_url"], api_key=api_key)
     return _client, _model
