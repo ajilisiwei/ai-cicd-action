@@ -1,0 +1,40 @@
+# .github/ai-cicd.yml — per-project config for the ai-cicd-action engine.
+# Copy into a consumer project's .github/ and adjust. Every field is optional;
+# omitted fields fall back to the defaults shown in comments.
+
+project:
+  name: my-project
+  description: "one-line description injected into every AI prompt"
+  conventions_file: CLAUDE.md      # architecture/conventions doc fed to codegen (default: CLAUDE.md/AGENTS.md if present)
+
+language: node                     # node | python | go | generic  → selects the verification profile
+
+commands:
+  test: "npm test"                 # required for auto_fix / implement_issue verification gates
+  build: ""                        # optional
+  syntax_check: "node --check {file}"   # '{file}' is substituted per file; empty → skip syntax gate
+  audit: "npm audit --json"        # used by security_triage
+
+layout:
+  source_dir: src
+  test_dir: test
+  file_ext: [".js"]                # files the symbol scanner / gates consider
+  # lock_excludes: [package-lock.json, pnpm-lock.yaml]   # excluded from diffs (sensible defaults built in)
+
+providers:
+  default: deepseek                # overridden at runtime by GitHub Variables LLM_PROVIDER / LLM_MODEL
+  model: deepseek-chat
+
+engine:
+  backend: api                     # api | claude-code | codex | opencode   (agent backends land in P5)
+  max_turns: 30                    # budget guard for agent backends
+  escalate_on_api_failure: true    # auto_fix: fall back to an agent backend when the single-shot API fix fails
+
+actions:                           # feature switches (absent = enabled)
+  pr_review: true
+  test_suggestion: true
+  security_triage: true
+  issue_triage: true
+  auto_fix: true
+  implement_issue: true
+  changelog: true
